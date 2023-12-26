@@ -11,7 +11,7 @@ import uuid
 app = FastAPI()
 
 # Serve static files
-app.mount("/static", StaticFiles(directory="transcribe/app/static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORSMiddleware
 app.add_middleware(
@@ -59,7 +59,7 @@ def make_chunks(audio_segment, chunk_length_ms):
 
 @app.get("/")
 async def read_html():
-    with open('transcribe/app/upload.html', 'r') as f:
+    with open('templates/upload.html', 'r') as f:
         html_content = f.read()
     return HTMLResponse(content=html_content)
 

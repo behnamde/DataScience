@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,7 +6,9 @@ import os
 from pydub import AudioSegment
 import speech_recognition as sr
 import uuid
+from fastapi.templating import Jinja2Templates
 
+templates = Jinja2Templates(directory="templates")
 
 app = FastAPI()
 
@@ -58,10 +60,8 @@ def make_chunks(audio_segment, chunk_length_ms):
     return [audio_segment[i:i + chunk_length_ms] for i in range(0, len(audio_segment), chunk_length_ms)]
 
 @app.get("/")
-async def read_html():
-    with open('templates/upload.html', 'r') as f:
-        html_content = f.read()
-    return HTMLResponse(content=html_content)
+async def read_html(request: Request):
+    return templates.TemplateResponse("upload.html", {"request": request})
 
 @app.post("/transcribe/")
 async def transcribe_upload(file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
@@ -92,4 +92,4 @@ async def transcribe_upload(file: UploadFile = File(...), background_tasks: Back
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

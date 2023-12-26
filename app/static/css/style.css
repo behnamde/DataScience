@@ -1,0 +1,109 @@
+/* Reset some default styles for consistency */
+body, h1, p {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    text-align: center;
+    padding: 20px;
+}
+
+header, footer {
+    padding: 10px;
+    color: #333;
+}
+
+main {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    display: inline-block;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    margin: 20px;
+}
+
+form {
+    margin: 0 auto;
+    max-width: 500px;
+    text-align: left;
+}
+
+input[type="file"] {
+    margin-bottom: 20px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: inset 0 2px 2px #eee;
+}
+
+input[type="submit"] {
+    background-color: #3498db; /* Change the color */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: 100%;
+}
+
+input[type="submit"]:hover {
+    background-color: #2980b9; /* Change the hover color */
+}
+
+#progress-container {
+    margin-top: 10px;
+    background-color: #eee;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#progress-bar {
+    height: 20px;
+    background-color: #4CAF50;
+    width: 0%;
+    transition: width 0.4s ease;
+}
+
+#status-message {
+    margin-top: 10px;
+    color: #333;
+}
+
+#download-btn,
+#cancel-btn,
+#repeat-btn {
+    background-color: #e74c3c; /* Change the color */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 10px 20px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+#download-btn:hover,
+#cancel-btn:hover,
+#repeat-btn:hover {
+    background-color: #c0392b; /* Change the hover color */
+}
+
+#button-group {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+#transcribed-text {
+    width: 100%;
+    padding: 10px;
+    resize: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: inset 0 2px 2px #eee;
+}

@@ -155,6 +155,7 @@
         <form id="upload-form" action="/transcribe/" method="post" enctype="multipart/form-data">
             <div class="drag-drop-area" id="drag-drop-area">
                 <p>Drag and drop an audio file here or click to select</p>
+                <p id="file-name" style="color: #3498db;"></p>
             </div>
             <input type="file" id="file-upload" name="file" accept="audio/*">
             <input type="submit" value="Upload and Transcribe">
@@ -191,7 +192,16 @@
             const repeatButton = document.getElementById('repeat-btn');
             const fileUploadInput = document.getElementById('file-upload');
             const dragDropArea = document.getElementById('drag-drop-area');
+            const fileNameDisplay = document.getElementById('file-name');
             let downloadBlobUrl = null;
+
+            function updateFileName() {
+                if (fileUploadInput.files.length > 0) {
+                    fileNameDisplay.textContent = `Selected file: ${fileUploadInput.files[0].name}`;
+                }
+            }
+
+            fileUploadInput.addEventListener('change', updateFileName);
 
             dragDropArea.addEventListener('click', () => fileUploadInput.click());
 
@@ -209,7 +219,7 @@
                 dragDropArea.classList.remove('drag-drop-active');
                 if (event.dataTransfer.files.length) {
                     fileUploadInput.files = event.dataTransfer.files;
-                    // Optionally, you can trigger the form submission here
+                    updateFileName();
                 }
             });
 
@@ -238,7 +248,7 @@
                 loadingAnimation.style.display = 'block';
                 progressBarContainer.style.display = 'block';
                 progressBar.style.width = '0%';
-                statusMessage.textContent = 'Uploading, it takes time acording to the size of the file...';
+                statusMessage.textContent = 'Uploading, it takes time due to the size of the file...';
                 cancelButton.style.display = 'block';
 
                 const formData = new FormData(uploadForm);

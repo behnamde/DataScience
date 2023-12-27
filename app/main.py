@@ -13,7 +13,7 @@ templates = Jinja2Templates(directory="templates")
 app = FastAPI()
 
 # Serve static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Add CORSMiddleware

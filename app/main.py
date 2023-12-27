@@ -1,6 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from pydub import AudioSegment
@@ -59,6 +58,14 @@ def make_chunks(audio_segment, chunk_length_ms):
 @app.get("/")
 async def read_html(request: Request):
     return templates.TemplateResponse("upload.html", {"request": request})
+
+@app.get("/loading.gif")
+async def get_loading_gif():
+    return FileResponse("templates/loading.gif")
+
+@app.get("/favicon.ico")
+async def get_favicon():
+    return FileResponse("templates/favicon.ico")
 
 @app.post("/transcribe/")
 async def transcribe_upload(file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):

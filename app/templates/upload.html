@@ -1,6 +1,7 @@
-<!-- <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
+    <title>Audio Transcription Service</title>
     <style>
         body, h1, p {
             margin: 0;
@@ -110,8 +111,11 @@
             border-radius: 4px;
             box-shadow: inset 0 2px 2px #eee;
         }
+        #loading {
+            display: none;
+            margin: 20px auto;
+        }
     </style>
-    <title>Upload Audio File</title>
 </head>
 <body>
     <header>
@@ -123,6 +127,11 @@
             <input type="file" id="file-upload" name="file" accept="audio/*">
             <input type="submit" value="Upload and Transcribe">
         </form>
+        <!-- Loading animation -->
+        <img id="loading" src="loading.gif" alt="Loading..." />
+        <div id="progress-container" style="display:none;">
+            <div id="progress-bar"></div>
+        </div>
         <div id="progress-container" style="display:none;">
             <div id="progress-bar"></div>
         </div>
@@ -143,6 +152,7 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const form = document.querySelector('#upload-form');
+            const loadingAnimation = document.getElementById('loading');
             const progressBarContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
             const statusMessage = document.getElementById('status-message');
@@ -175,6 +185,7 @@
 
             form.addEventListener('submit', function(event) {
                 event.preventDefault();
+                loadingAnimation.style.display = 'block';
                 progressBarContainer.style.display = 'block';
                 progressBar.style.width = '0%';
                 statusMessage.textContent = 'Uploading...';
@@ -193,6 +204,7 @@
                     return response.text();
                 })
                 .then(text => {
+                    loadingAnimation.style.display = 'none';
                     progressBar.style.width = '100%';
                     statusMessage.textContent = 'Transcription complete. You can download or review your file.';
                     transcriptionTextArea.value = text;
@@ -203,6 +215,7 @@
                     repeatBtn.style.display = 'block';
                 })
                 .catch(error => {
+                    loadingAnimation.style.display = 'none';
                     console.error('Error:', error);
                     progressBarContainer.style.display = 'none';
                     statusMessage.textContent = 'An error occurred.';
@@ -228,198 +241,6 @@
                     repeatBtn.style.display = 'block';
                 }
             });
-        });
-    </script>
-</body>
-</html> -->
-
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        /* Existing styles */
-        body, h1, p {
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 20px;
-        }
-
-        header, footer {
-            padding: 10px;
-            color: #333;
-        }
-
-        main {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            display: inline-block;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-            margin: 20px;
-        }
-
-        form {
-            margin: 0 auto;
-            max-width: 500px;
-            text-align: left;
-        }
-
-        input[type="file"] {
-            margin-bottom: 20px;
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-shadow: inset 0 2px 2px #eee;
-        }
-
-        input[type="submit"] {
-            background-color: #3498db; /* Button color */
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            padding: 10px 20px;
-            width: 100%;
-        }
-
-        input[type="submit"]:hover {
-            background-color: #2980b9; /* Button hover color */
-        }
-
-        /* Hide the loading animation initially */
-        #loading {
-            display: none;
-            margin: 20px auto;
-        }
-    </style>
-    <title>Audio Transcription Service</title>
-</head>
-<body>
-    <header>
-        <h1>Audio Transcription Service</h1>
-    </header>
-    <main>
-        <form id="upload-form" action="/transcribe/" method="post" enctype="multipart/form-data">
-            <label for="file-upload">Choose an audio file:</label>
-            <input type="file" id="file-upload" name="file" accept="audio/*">
-            <input type="submit" value="Upload and Transcribe">
-        </form>
-        <!-- Loading animation -->
-        <img id="loading" src="loading.gif" alt="Loading..." />
-        <div id="progress-container" style="display:none;">
-            <div id="progress-bar"></div>
-        </div>
-        <div id="status-message"></div>
-        <div id="button-group" style="display:none;">
-            <button id="download-btn">Download Transcription</button>
-            <button id="cancel-btn">Cancel</button>
-            <button id="repeat-btn">Repeat</button>
-        </div>
-        <div id="transcription-result" style="display:none;">
-            <h3>Transcribed Text:</h3>
-            <textarea id="transcription-text" rows="10" cols="50" readonly></textarea>
-        </div>
-    </main>
-    <footer>
-        <p>Powered by <a href="https://behnamooz.com">Behnamooz.com</a></p>
-    </footer>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const form = document.querySelector('#upload-form');
-            const progressBarContainer = document.getElementById('progress-container');
-            const progressBar = document.getElementById('progress-bar');
-            const statusMessage = document.getElementById('status-message');
-            const transcriptionTextArea = document.getElementById('transcription-text');
-            const transcriptionResultContainer = document.getElementById('transcription-result');
-            const downloadBtn = document.getElementById('download-btn');
-            const cancelBtn = document.getElementById('cancel-btn');
-            const repeatBtn = document.getElementById('repeat-btn');
-            const loadingAnimation = document.getElementById('loading');
-            let downloadBlobUrl = null;
-
-            form.addEventListener('submit', function(event) {
-                event.preventDefault();
-                loadingAnimation.style.display = 'block'; // Show loading animation
-                statusMessage.textContent = 'Uploading...';
-
-                const formData = new FormData(form);
-                fetch('/transcribe/', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error('Network response was not ok.');
-                    return response.text();
-                })
-                .then(text => {
-                    loadingAnimation.style.display = 'none'; // Hide loading animation
-                    progressBarContainer.style.display = 'none';
-                    statusMessage.textContent = 'Transcription complete. You can download or review your file.';
-                    transcriptionTextArea.value = text;
-                    transcriptionResultContainer.style.display = 'block';
-                    downloadBtn.style.display = 'block';
-                })
-                .catch(error => {
-                    loadingAnimation.style.display = 'none'; // Hide loading animation
-                    progressBarContainer.style.display = 'none';
-                    statusMessage.textContent = 'An error occurred. Please try again.';
-                    downloadBtn.style.display = 'none';
-                });
-            });
-
-            downloadBtn.addEventListener('click', function() {
-                if (downloadBlobUrl) {
-                    const link = document.createElement('a');
-                    link.href = downloadBlobUrl;
-                    link.download = "transcription.txt";
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(downloadBlobUrl);
-                    downloadBlobUrl = null;
-                }
-            });
-
-            cancelBtn.addEventListener('click', function() {
-                // TODO: Implement cancellation logic with the backend
-                progressBarContainer.style.display = 'none';
-                statusMessage.textContent = 'Upload canceled.';
-                downloadBtn.style.display = 'none';
-                cancelBtn.style.display = 'none';
-                repeatBtn.style.display = 'block';
-                form.reset();
-            });
-
-            repeatBtn.addEventListener('click', function() {
-                progressBarContainer.style.display = 'none';
-                statusMessage.textContent = '';
-                downloadBtn.style.display = 'none';
-                cancelBtn.style.display = 'none';
-                repeatBtn.style.display = 'none';
-                transcriptionResultContainer.style.display = 'none';
-                form.reset();
-            });
-
-            // repeatBtn.addEventListener('click', function() {
-            //     transcriptionResultContainer.style.display = 'none';
-            //     form.reset();
-            // });
-
-            // cancelBtn.addEventListener('click', function() {
-            //     // TODO: Implement cancellation logic
-            //     transcriptionResultContainer.style.display = 'none';
-            //     form.reset();
-            // });
         });
     </script>
 </body>

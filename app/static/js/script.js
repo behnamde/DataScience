@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function() {
         transcriptionResultContainer.style.display = 'none';
 
         const formData = new FormData(form);
-        fetch('http://localhost:8000/transcribe/', {
+        fetch('/transcribe/', {
             method: 'POST',
             body: formData
         })

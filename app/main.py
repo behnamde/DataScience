@@ -6,10 +6,11 @@ from pydub import AudioSegment
 import speech_recognition as sr
 import uuid
 from fastapi.templating import Jinja2Templates
-
-templates = Jinja2Templates(directory="templates")
+from starlette.background import BackgroundTask
 
 app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
 
 # Add CORSMiddleware
 app.add_middleware(
@@ -67,6 +68,17 @@ async def get_loading_gif():
 async def get_favicon():
     return FileResponse("templates/favicon.ico")
 
+class FileResponseWithCleanup(FileResponse):
+    def __init__(self, path: str, background_tasks: BackgroundTasks, *args, **kwargs):
+        super().__init__(path, *args, **kwargs)
+        background_tasks.add_task(self.delete_file, path=path)
+
+    async def delete_file(self, path):
+        try:
+            os.remove(path)
+        except Exception as e:
+            print(f"Error deleting file {path}: {e}")
+
 @app.post("/transcribe/")
 async def transcribe_upload(file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
     file_ext = file.filename.split('.')[-1].lower()
@@ -89,11 +101,13 @@ async def transcribe_upload(file: UploadFile = File(...), background_tasks: Back
     with open(txt_path, "w") as text_file:
         text_file.write(transcription)
 
+    # Schedule deletion of temporary files
     background_tasks.add_task(os.remove, original_path)
     background_tasks.add_task(os.remove, wav_path)
 
-    return FileResponse(path=txt_path, filename="transcription.txt", media_type='text/plain', background=background_tasks)
+    # Return the transcription with a custom response class that deletes the file after download
+    return FileResponseWithCleanup(path=txt_path, filename="transcription.txt", media_type='text/plain', background_tasks=background_tasks)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="localhost", port=8000)

@@ -10,7 +10,7 @@
 
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            background-color: #b5d2d1;
             text-align: center;
             padding: 20px;
         }
@@ -29,6 +29,20 @@
             margin: 20px;
         }
 
+        .drag-drop-area {
+            border: 2px dashed #3498db;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .drag-drop-area:hover,
+        .drag-drop-area.drag-drop-active {
+            background-color: #e8f4fd;
+        }
+
         form {
             margin: 0 auto;
             max-width: 500px;
@@ -36,12 +50,7 @@
         }
 
         input[type="file"] {
-            margin-bottom: 20px;
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-shadow: inset 0 2px 2px #eee;
+            display: none;
         }
 
         input[type="submit"] {
@@ -77,10 +86,30 @@
             color: #333;
         }
 
-        #download-btn,
-        #cancel-btn,
+        #download-btn{
+            background-color: #436ae1; /* Change the color */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 10px 20px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        #cancel-btn{
+            background-color: #cb3525; /* Change the color */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 10px 20px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
         #repeat-btn {
-            background-color: #e74c3c; /* Change the color */
+            background-color: #4dc98f; /* Change the color */
             color: white;
             border: none;
             border-radius: 4px;
@@ -93,7 +122,7 @@
         #download-btn:hover,
         #cancel-btn:hover,
         #repeat-btn:hover {
-            background-color: #c0392b; /* Change the hover color */
+            background-color: #2b91c0; /* Change the hover color */
         }
 
         #button-group {
@@ -124,27 +153,25 @@
     </header>
     <main>
         <form id="upload-form" action="/transcribe/" method="post" enctype="multipart/form-data">
-            <label for="file-upload">Choose an audio file:</label>
+            <div class="drag-drop-area" id="drag-drop-area">
+                <p>Drag and drop an audio file here or click to select</p>
+            </div>
             <input type="file" id="file-upload" name="file" accept="audio/*">
             <input type="submit" value="Upload and Transcribe">
         </form>
-        <!-- Loading animation -->
         <img id="loading" src="/loading.gif" alt="Loading..." />
         <div id="progress-container" style="display:none;">
             <div id="progress-bar"></div>
         </div>
-        <div id="progress-container" style="display:none;">
-            <div id="progress-bar"></div>
-        </div>
         <div id="status-message"></div>
-        <div id="button-group">
-            <button id="download-btn" style="display:none;">Download Transcription</button>
-            <button id="cancel-btn" style="display:none;">Cancel</button>
-            <button id="repeat-btn" style="display:none;">Repeat</button>
-        </div>
         <div id="transcription-result" style="display:none;">
             <h3>Transcribed Text:</h3>
             <textarea id="transcription-text" rows="10" cols="50" readonly></textarea>
+        </div>
+        <div id="button-group">
+            <button id="download-btn" style="display:none;">Download Transcription</button>
+            <button id="cancel-btn" style="display:none;">Cancel</button>
+            <button id="repeat-btn" style="display:none;">Try The Next One</button>
         </div>
     </main>
     <footer>
@@ -152,81 +179,98 @@
     </footer>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            const form = document.querySelector('#upload-form');
+            const uploadForm = document.getElementById('upload-form');
             const loadingAnimation = document.getElementById('loading');
             const progressBarContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
             const statusMessage = document.getElementById('status-message');
             const transcriptionTextArea = document.getElementById('transcription-text');
             const transcriptionResultContainer = document.getElementById('transcription-result');
-            const downloadBtn = document.getElementById('download-btn');
-            const cancelBtn = document.getElementById('cancel-btn');
-            const repeatBtn = document.getElementById('repeat-btn');
+            const downloadButton = document.getElementById('download-btn');
+            const cancelButton = document.getElementById('cancel-btn');
+            const repeatButton = document.getElementById('repeat-btn');
+            const fileUploadInput = document.getElementById('file-upload');
+            const dragDropArea = document.getElementById('drag-drop-area');
             let downloadBlobUrl = null;
 
-            cancelBtn.addEventListener('click', function() {
-                // TODO: Implement cancellation logic with the backend
-                progressBarContainer.style.display = 'none';
-                statusMessage.textContent = 'Upload canceled.';
-                downloadBtn.style.display = 'none';
-                cancelBtn.style.display = 'none';
-                repeatBtn.style.display = 'block';
-                form.reset();
+            dragDropArea.addEventListener('click', () => fileUploadInput.click());
+
+            dragDropArea.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                dragDropArea.classList.add('drag-drop-active');
             });
 
-            repeatBtn.addEventListener('click', function() {
+            dragDropArea.addEventListener('dragleave', () => {
+                dragDropArea.classList.remove('drag-drop-active');
+            });
+
+            dragDropArea.addEventListener('drop', (event) => {
+                event.preventDefault();
+                dragDropArea.classList.remove('drag-drop-active');
+                if (event.dataTransfer.files.length) {
+                    fileUploadInput.files = event.dataTransfer.files;
+                    // Optionally, you can trigger the form submission here
+                }
+            });
+
+            function resetUI() {
                 progressBarContainer.style.display = 'none';
                 statusMessage.textContent = '';
-                downloadBtn.style.display = 'none';
-                cancelBtn.style.display = 'none';
-                repeatBtn.style.display = 'none';
+                downloadButton.style.display = 'none';
+                cancelButton.style.display = 'none';
+                repeatButton.style.display = 'none';
                 transcriptionResultContainer.style.display = 'none';
-                form.reset();
+                uploadForm.reset();
+            }
+
+            cancelButton.addEventListener('click', function() {
+                resetUI();
+                statusMessage.textContent = 'Upload canceled.';
+                repeatButton.style.display = 'block';
             });
 
-            form.addEventListener('submit', function(event) {
+            repeatButton.addEventListener('click', function() {
+                resetUI();
+            });
+
+            uploadForm.addEventListener('submit', function(event) {
                 event.preventDefault();
                 loadingAnimation.style.display = 'block';
                 progressBarContainer.style.display = 'block';
                 progressBar.style.width = '0%';
-                statusMessage.textContent = 'Uploading...';
-                downloadBtn.style.display = 'none';
-                cancelBtn.style.display = 'block';
-                repeatBtn.style.display = 'none';
-                transcriptionResultContainer.style.display = 'none';
+                statusMessage.textContent = 'Uploading, it takes time acording to the size of the file...';
+                cancelButton.style.display = 'block';
 
-                const formData = new FormData(form);
+                const formData = new FormData(uploadForm);
                 fetch('/transcribe/', {
                     method: 'POST',
                     body: formData
                 })
                 .then(response => {
-                    if (!response.ok) throw new Error('Network response was not ok.');
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                     return response.text();
                 })
                 .then(text => {
                     loadingAnimation.style.display = 'none';
                     progressBar.style.width = '100%';
-                    statusMessage.textContent = 'Transcription complete. You can download or review your file.';
+                    statusMessage.textContent = 'Transcription complete. You can review and download your file or reset.';
                     transcriptionTextArea.value = text;
                     transcriptionResultContainer.style.display = 'block';
                     downloadBlobUrl = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-                    downloadBtn.style.display = 'block';
-                    cancelBtn.style.display = 'none';
-                    repeatBtn.style.display = 'block';
+                    downloadButton.style.display = 'block';
+                    cancelButton.style.display = 'none';
+                    repeatButton.style.display = 'block';
                 })
                 .catch(error => {
                     loadingAnimation.style.display = 'none';
                     console.error('Error:', error);
-                    progressBarContainer.style.display = 'none';
                     statusMessage.textContent = 'An error occurred.';
-                    downloadBtn.style.display = 'none';
-                    cancelBtn.style.display = 'none';
-                    repeatBtn.style.display = 'block';
+                    resetUI();
+                    repeatButton.style.display = 'block';
                 });
             });
 
-            downloadBtn.addEventListener('click', function() {
+            downloadButton.addEventListener('click', function() {
                 if (downloadBlobUrl) {
                     const link = document.createElement('a');
                     link.href = downloadBlobUrl;
@@ -236,10 +280,9 @@
                     document.body.removeChild(link);
                     URL.revokeObjectURL(downloadBlobUrl);
                     downloadBlobUrl = null;
-                    downloadBtn.style.display = 'none';
                     statusMessage.textContent = 'Your file has been downloaded.';
-                    progressBarContainer.style.display = 'none';
-                    repeatBtn.style.display = 'block';
+                    resetUI();
+                    repeatButton.style.display = 'block';
                 }
             });
         });

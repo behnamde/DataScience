@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -13,7 +13,8 @@ templates = Jinja2Templates(directory="templates")
 app = FastAPI()
 
 # Serve static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 
 # Add CORSMiddleware
 app.add_middleware(

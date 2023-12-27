@@ -390,16 +390,36 @@
                 }
             });
 
+            cancelBtn.addEventListener('click', function() {
+                // TODO: Implement cancellation logic with the backend
+                progressBarContainer.style.display = 'none';
+                statusMessage.textContent = 'Upload canceled.';
+                downloadBtn.style.display = 'none';
+                cancelBtn.style.display = 'none';
+                repeatBtn.style.display = 'block';
+                form.reset();
+            });
+
             repeatBtn.addEventListener('click', function() {
+                progressBarContainer.style.display = 'none';
+                statusMessage.textContent = '';
+                downloadBtn.style.display = 'none';
+                cancelBtn.style.display = 'none';
+                repeatBtn.style.display = 'none';
                 transcriptionResultContainer.style.display = 'none';
                 form.reset();
             });
 
-            cancelBtn.addEventListener('click', function() {
-                // TODO: Implement cancellation logic
-                transcriptionResultContainer.style.display = 'none';
-                form.reset();
-            });
+            // repeatBtn.addEventListener('click', function() {
+            //     transcriptionResultContainer.style.display = 'none';
+            //     form.reset();
+            // });
+
+            // cancelBtn.addEventListener('click', function() {
+            //     // TODO: Implement cancellation logic
+            //     transcriptionResultContainer.style.display = 'none';
+            //     form.reset();
+            // });
         });
     </script>
 </body>

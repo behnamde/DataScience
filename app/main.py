@@ -60,9 +60,9 @@ def make_chunks(audio_segment, chunk_length_ms):
 async def read_html(request: Request):
     return templates.TemplateResponse("upload.html", {"request": request})
 
-@app.get("/loading.gif")
+@app.get("/loading_clock_2.gif")
 async def get_loading_gif():
-    return FileResponse("templates/loading.gif")
+    return FileResponse("templates/loading_clock_2.gif")
 
 @app.get("/favicon.ico")
 async def get_favicon():

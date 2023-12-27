@@ -105,7 +105,7 @@
             cursor: pointer;
             padding: 10px 20px;
             margin-top: 10px;
-            width: 100%;
+            width: 80%;
         }
 
         #repeat-btn {
@@ -143,6 +143,8 @@
         #loading {
             display: none;
             margin: 20px auto;
+            height: 50%;
+            width: 50%;
         }
     </style>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
@@ -160,7 +162,7 @@
             <input type="file" id="file-upload" name="file" accept="audio/*">
             <input type="submit" value="Upload and Transcribe">
         </form>
-        <img id="loading" src="/loading.gif" alt="Loading..." />
+        <img id="loading" src="/loading_clock_2.gif" alt="Loading..." />
         <div id="progress-container" style="display:none;">
             <div id="progress-bar"></div>
         </div>
@@ -194,26 +196,27 @@
             const dragDropArea = document.getElementById('drag-drop-area');
             const fileNameDisplay = document.getElementById('file-name');
             let downloadBlobUrl = null;
-
+            let progressInterval;
+        
             function updateFileName() {
                 if (fileUploadInput.files.length > 0) {
                     fileNameDisplay.textContent = `Selected file: ${fileUploadInput.files[0].name}`;
                 }
             }
-
+        
             fileUploadInput.addEventListener('change', updateFileName);
-
+        
             dragDropArea.addEventListener('click', () => fileUploadInput.click());
-
+        
             dragDropArea.addEventListener('dragover', (event) => {
                 event.preventDefault();
                 dragDropArea.classList.add('drag-drop-active');
             });
-
+        
             dragDropArea.addEventListener('dragleave', () => {
                 dragDropArea.classList.remove('drag-drop-active');
             });
-
+        
             dragDropArea.addEventListener('drop', (event) => {
                 event.preventDefault();
                 dragDropArea.classList.remove('drag-drop-active');
@@ -222,27 +225,50 @@
                     updateFileName();
                 }
             });
-
+        
             function resetUI() {
                 progressBarContainer.style.display = 'none';
+                loadingAnimation.style.display = 'none';
                 statusMessage.textContent = '';
                 downloadButton.style.display = 'none';
                 cancelButton.style.display = 'none';
                 repeatButton.style.display = 'none';
                 transcriptionResultContainer.style.display = 'none';
                 uploadForm.reset();
+                fileNameDisplay.textContent = '';
+                const submitButton = uploadForm.querySelector('input[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
             }
-
+        
+            function updateProgress(step) {
+                let progressPercentages = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
+                // let progressPercentages = [25, 50, 75, 100];
+                progressBar.style.width = progressPercentages[step] + '%';
+            }
+        
+            function simulateProgress() {
+                let step = 0;
+                progressInterval = setInterval(() => {
+                    if (step < 18) {
+                        updateProgress(step++);
+                    } else {
+                        clearInterval(progressInterval);
+                        updateProgress(step); // Ensure it reaches 100%
+                    }
+                }, 500); // Adjust time as needed
+            }
+        
             cancelButton.addEventListener('click', function() {
                 resetUI();
                 statusMessage.textContent = 'Upload canceled.';
-                repeatButton.style.display = 'block';
             });
-
+        
             repeatButton.addEventListener('click', function() {
                 resetUI();
             });
-
+        
             uploadForm.addEventListener('submit', function(event) {
                 event.preventDefault();
                 loadingAnimation.style.display = 'block';
@@ -250,7 +276,9 @@
                 progressBar.style.width = '0%';
                 statusMessage.textContent = 'Uploading, it takes time due to the size of the file...';
                 cancelButton.style.display = 'block';
-
+        
+                simulateProgress(); // Simulate the progress
+        
                 const formData = new FormData(uploadForm);
                 fetch('/transcribe/', {
                     method: 'POST',
@@ -261,8 +289,9 @@
                     return response.text();
                 })
                 .then(text => {
-                    loadingAnimation.style.display = 'none';
-                    progressBar.style.width = '100%';
+                    clearInterval(progressInterval);
+                    updateProgress(19);
+                    loadingAnimation.style.display = 'none';                    
                     statusMessage.textContent = 'Transcription complete. You can review and download your file or reset.';
                     transcriptionTextArea.value = text;
                     transcriptionResultContainer.style.display = 'block';
@@ -279,7 +308,7 @@
                     repeatButton.style.display = 'block';
                 });
             });
-
+        
             downloadButton.addEventListener('click', function() {
                 if (downloadBlobUrl) {
                     const link = document.createElement('a');

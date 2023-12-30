@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Transcription Service</title>
+    <style>
+        body, h1, p {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #b5d2d1;
+            text-align: center;
+            padding: 20px;
+        }
+
+        header, footer {
+            padding: 10px;
+            color: #333;
+        }
+
+        main {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            margin: 20px;
+        }
+
+        .drag-drop-area {
+            border: 2px dashed #3498db;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .drag-drop-area:hover,
+        .drag-drop-area.drag-drop-active {
+            background-color: #e8f4fd;
+        }
+
+        form {
+            margin: 0 auto;
+            max-width: 500px;
+            text-align: left;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        input[type="submit"] {
+            background-color: #3498db; /* Change the color */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 10px 20px;
+            width: 100%;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #2980b9; /* Change the hover color */
+        }
+
+        #progress-container {
+            margin-top: 10px;
+            background-color: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            height: 20px;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        #status-message {
+            margin-top: 10px;
+            color: #333;
+        }
+
+        #task-message {
+            margin-top: 10px;
+            color: #333;
+        }
+
+        #download-btn{
+            background-color: #436ae1; /* Change the color */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 10px 20px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        #cancel-btn{
+            background-color: #cb3525; /* Change the color */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 10px 20px;
+            margin-top: 10px;
+            width: 80%;
+        }
+
+        #repeat-btn {
+            background-color: #4dc98f; /* Change the color */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 10px 20px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        #download-btn:hover,
+        #cancel-btn:hover,
+        #repeat-btn:hover {
+            background-color: #2b91c0; /* Change the hover color */
+        }
+
+        #button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #transcribed-text {
+            width: 100%;
+            padding: 10px;
+            resize: none;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: inset 0 2px 2px #eee;
+        }
+        #loading {
+            display: none;
+            margin: 20px auto;
+            height: 50%;
+            width: 50%;
+        }
+
+        #language-select {
+        padding: 10px;
+        margin: 20px 0;  /* Adjust the margin as needed */
+        border: 2px solid #3498db;
+        border-radius: 4px;
+        background-color: white;
+        font-family: Arial, sans-serif;
+        color: #333;
+        cursor: pointer;
+        width: 100%;  /* Adjust the width as needed */
+        box-sizing: border-box; /* Ensures padding and border are included in width */
+        }
+
+        #language-select:hover {
+            background-color: #e8f4fd;
+        }
+
+        #language-select:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+
+        #language-select option {
+            padding: 5px;
+        }
+    </style>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header>
+        <h1>Audio Transcription Service</h1>
+    </header>
+    <main>
+        <form id="upload-form" action="/transcribe/" method="post" enctype="multipart/form-data">
+            <div id="user-message" style="text-align: center; margin-top: 20px;">
+                <p>Now, just English audio is supported, but more langueges are becomming available in next few days</p>
+            </div>
+            <select id="language-select">
+                <option value="en">English</option>
+                <!-- <option value="sp">Spanish</option>
+                <option value="pt">Portuguese</option> -->
+                <!-- <option value="fa">Farsi</option> -->
+                <!-- Add more options as needed -->
+            </select>
+            <div class="drag-drop-area" id="drag-drop-area">
+                <p>Drag and drop an audio file here or click to select</p>
+                <p id="file-name" style="color: #3498db;"></p>
+            </div>
+            <input type="file" id="file-upload" name="file" accept="audio/*">
+            <input type="submit" value="Upload and Transcribe">
+        </form>
+        <img id="loading" src="/loading_clock_2.gif" alt="Loading..." />
+        <div id="progress-container" style="display:none;">
+            <div id="progress-bar"></div>
+        </div>
+        <div id="status-message"></div>
+        <div id="transcription-result" style="display:none;">
+            <h3>Transcribed Text:</h3>
+            <textarea id="transcription-text" rows="10" cols="50" readonly></textarea>
+        </div>
+        <div id="button-group">
+            <button id="download-btn" style="display:none;">Download Transcription</button>
+            <button id="cancel-btn" style="display:none;">Cancel</button>
+            <button id="repeat-btn" style="display:none;">Try The Next One</button>
+        </div>
+    </main>
+    <footer>
+        <p>Powered by <a href="https://behnamooz.com">Behnamooz.com</a></p>
+    </footer>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const uploadForm = document.getElementById('upload-form');
+            const loadingAnimation = document.getElementById('loading');
+            const progressBarContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const statusMessage = document.getElementById('status-message');
+            const transcriptionTextArea = document.getElementById('transcription-text');
+            const transcriptionResultContainer = document.getElementById('transcription-result');
+            const downloadButton = document.getElementById('download-btn');
+            const cancelButton = document.getElementById('cancel-btn');
+            const repeatButton = document.getElementById('repeat-btn');
+            const fileUploadInput = document.getElementById('file-upload');
+            const dragDropArea = document.getElementById('drag-drop-area');
+            const fileNameDisplay = document.getElementById('file-name');
+            let downloadUrl = null;
+            let progressInterval;
+            let taskId = null;
+
+            const supportedLanguages = {
+                'en': 'en-US',
+                // 'sp': 'es-ES',
+                // 'pt': 'pt-PT',
+                // 'fa': 'fa-IR'
+                // ... add other languages as needed ...
+            };
+
+            function updateFileName() {
+                if (fileUploadInput.files.length > 0) {
+                    fileNameDisplay.textContent = `Selected file: ${fileUploadInput.files[0].name}`;
+                }
+            }
+
+            fileUploadInput.addEventListener('change', updateFileName);
+
+            dragDropArea.addEventListener('click', () => fileUploadInput.click());
+
+            dragDropArea.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                dragDropArea.classList.add('drag-drop-active');
+            });
+
+            dragDropArea.addEventListener('dragleave', () => {
+                dragDropArea.classList.remove('drag-drop-active');
+            });
+
+            dragDropArea.addEventListener('drop', (event) => {
+                event.preventDefault();
+                dragDropArea.classList.remove('drag-drop-active');
+                if (event.dataTransfer.files.length) {
+                    fileUploadInput.files = event.dataTransfer.files;
+                    updateFileName();
+                }
+            });
+
+            function resetUI() {
+                progressBarContainer.style.display = 'none';
+                loadingAnimation.style.display = 'none';
+                statusMessage.textContent = '';
+                downloadButton.style.display = 'none';
+                cancelButton.style.display = 'none';
+                repeatButton.style.display = 'none';
+                transcriptionResultContainer.style.display = 'none';
+                uploadForm.reset();
+                fileNameDisplay.textContent = '';
+                const submitButton = uploadForm.querySelector('input[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
+                taskId = null;
+            }
+
+            function updateProgress(step) {
+                let progressPercentages = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
+                progressBar.style.width = progressPercentages[step] + '%';
+            }
+
+            function simulateProgress() {
+                let step = 0;
+                progressInterval = setInterval(() => {
+                    if (step < 18) {
+                        updateProgress(step++);
+                    } else {
+                        clearInterval(progressInterval);
+                        updateProgress(step); // Ensure it reaches 100%
+                    }
+                }, 500); // Adjust time as needed
+            }
+
+            cancelButton.addEventListener('click', function() {
+                if (taskId) {
+                    fetch(`/cancel/${taskId}`, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Cancellation response:', data);
+                            statusMessage.textContent = 'Transcription cancelled.';
+                            taskId = null; // Reset the task ID
+                            resetUI(); // Reset the UI after cancellation
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            statusMessage.textContent = 'Error cancelling transcription.';
+                        });
+                } else {
+                    console.error('No transcription task to cancel.');
+                    statusMessage.textContent = 'No ongoing transcription task found.';
+                }
+            });
+
+            repeatButton.addEventListener('click', function() {
+                resetUI();
+            });
+
+            uploadForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const selectedLanguage = document.getElementById('language-select').value;
+                const languageCode = supportedLanguages[selectedLanguage];
+
+                loadingAnimation.style.display = 'block';
+                progressBarContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                statusMessage.textContent = 'Uploading, it takes time due to the size of the file...';
+                cancelButton.style.display = 'block';
+                
+
+                simulateProgress(); // Simulate the progress
+
+                const formData = new FormData(uploadForm);
+                formData.append('language', languageCode);
+
+                fetch('/transcribe/', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);  // Uncomment for debuggin
+                    clearInterval(progressInterval);
+                    updateProgress(19);
+                    loadingAnimation.style.display = 'none';                    
+                    statusMessage.textContent = 'Transcription complete. You can review and download your file or reset.';
+                    transcriptionTextArea.value = data.transcription;
+                    transcriptionResultContainer.style.display = 'block';
+                    downloadUrl = data.downloadUrl; // Set downloadUrl from the response
+                    downloadButton.style.display = 'block';
+                    cancelButton.style.display = 'none';
+                    repeatButton.style.display = 'block';
+                    taskId = data.taskId; // Set taskId from the response
+                })
+                .catch(error => {
+                    loadingAnimation.style.display = 'none';
+                    console.error('Error:', error);
+                    statusMessage.textContent = 'An error occurred.';
+                    resetUI();
+                });
+            });
+
+            downloadButton.addEventListener('click', function() {
+                if (downloadUrl) {
+                    window.open(downloadUrl, '_blank');
+                    statusMessage.textContent = 'Your file is being downloaded.';
+                    resetUI();
+                } else {
+                    statusMessage.textContent = 'No file available for download.';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

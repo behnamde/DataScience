@@ -68,13 +68,14 @@ def cancel_on_disconnect(handler: Callable[[Request], Awaitable[Any]]):
 
 @app.post("/transcribe/")
 @cancel_on_disconnect
-async def transcribe_upload(file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
+async def transcribe_upload(request: Request,
+                            file: UploadFile = File(...), 
+                            background_tasks: BackgroundTasks = BackgroundTasks()):
     file_ext = file.filename.split('.')[-1].lower()
     if file_ext not in SUPPORTED_FORMATS:
         return {"error": "Unsupported file format"}
 
     task_id = uuid.uuid4().hex
-    print(task_id)
     original_path = f"temp_{task_id}.{file_ext}"
     wav_path = f"temp_{task_id}.wav"
     txt_path = f"transcription_{task_id}.txt"
@@ -87,10 +88,12 @@ async def transcribe_upload(file: UploadFile = File(...), background_tasks: Back
 
     transcription_task = asyncio.create_task(transcribe_audio_file(wav_path, task_id))
     tasks[task_id] = transcription_task
+    print(tasks)
     try:
         transcription = await transcription_task
     except asyncio.CancelledError:
-        return JSONResponse(content={"taskId": task_id, "message": "Transcription cancelled"})
+        return JSONResponse(content={"taskId": task_id, 
+                                     "message": "Transcription cancelled"})
     finally:
         del tasks[task_id]
 
@@ -100,16 +103,22 @@ async def transcribe_upload(file: UploadFile = File(...), background_tasks: Back
     # Schedule deletion of temporary files
     background_tasks.add_task(os.remove, original_path)
     background_tasks.add_task(os.remove, wav_path)
+    background_tasks.add_task(os.remove, txt_path)
 
-    # Return the task ID and a URL for downloading the file
-    return JSONResponse(content={"taskId": task_id, "downloadUrl": f"/download/{task_id}"})
+    # Return the task ID and a URL for downloading the file andtranscriptin for review
+    return JSONResponse(content={"taskId": task_id, 
+                                 "downloadUrl": f"/download/{task_id}",
+                                 "transcription": transcription})
 
 # Endpoint to download the transcription file
 @app.get("/download/{task_id}")
 async def download_transcription(task_id: str, background_tasks: BackgroundTasks):
     txt_path = f"transcription_{task_id}.txt"
     if os.path.exists(txt_path):
-        response = FileResponseWithCleanup(path=txt_path, filename="transcription.txt", media_type='text/plain', background_tasks=background_tasks)
+        response = FileResponseWithCleanup(path=txt_path, 
+                                           filename="transcription.txt", 
+                                           media_type='text/plain', 
+                                           background_tasks=background_tasks)
         return response
     else:
         raise HTTPException(status_code=404, detail="File not found")

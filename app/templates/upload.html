@@ -146,6 +146,31 @@
             height: 50%;
             width: 50%;
         }
+        #language-select {
+        padding: 10px;
+        margin: 20px 0;  /* Adjust the margin as needed */
+        border: 2px solid #3498db;
+        border-radius: 4px;
+        background-color: white;
+        font-family: Arial, sans-serif;
+        color: #333;
+        cursor: pointer;
+        width: 100%;  /* Adjust the width as needed */
+        box-sizing: border-box; /* Ensures padding and border are included in width */
+        }
+
+        #language-select:hover {
+            background-color: #e8f4fd;
+        }
+
+        #language-select:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+
+        #language-select option {
+            padding: 5px;
+        }
     </style>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
 </head>
@@ -155,6 +180,17 @@
     </header>
     <main>
         <form id="upload-form" action="/transcribe/" method="post" enctype="multipart/form-data">
+            <div id="user-message" style="text-align: center; margin-top: 20px;">
+                <p>Now, just English audio is supported, but more langueges are becomming available in next few days</p>
+            </div>
+            <select id="language-select">
+                <option value="en">English</option>
+                <option>Comming Soon</option>
+                <!-- <option value="sp">Spanish</option>
+                <option value="pt">Portuguese</option>
+                <option value="fa">Farsi</option> -->
+                <!-- Add more options as needed -->
+            </select>
             <div class="drag-drop-area" id="drag-drop-area">
                 <p>Drag and drop an audio file here or click to select</p>
                 <p id="file-name" style="color: #3498db;"></p>
@@ -197,6 +233,14 @@
             const fileNameDisplay = document.getElementById('file-name');
             let downloadBlobUrl = null;
             let progressInterval;
+
+            const supportedLanguages = {
+                'en': 'en-US',
+                'sp': 'es-ES',
+                'pt': 'pt-PT',
+                'fa': 'fa-IR'
+                // ... add other languages as needed ...
+            };
         
             function updateFileName() {
                 if (fileUploadInput.files.length > 0) {
@@ -271,6 +315,8 @@
         
             uploadForm.addEventListener('submit', function(event) {
                 event.preventDefault();
+                const selectedLanguage = document.getElementById('language-select').value;
+                const languageCode = supportedLanguages[selectedLanguage];
                 loadingAnimation.style.display = 'block';
                 progressBarContainer.style.display = 'block';
                 progressBar.style.width = '0%';
@@ -280,6 +326,8 @@
                 simulateProgress(); // Simulate the progress
         
                 const formData = new FormData(uploadForm);
+                formData.append('language', languageCode);
+
                 fetch('/transcribe/', {
                     method: 'POST',
                     body: formData

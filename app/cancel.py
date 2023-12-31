@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request, HTTPException
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request, HTTPException, Form
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
@@ -10,26 +10,22 @@ import asyncio
 from functools import wraps
 from typing import Any, Awaitable, Callable
 
-
-
 app = FastAPI(title="Audio Transcription Service")
 
 templates = Jinja2Templates(directory="templates")
 
-# Add CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 SUPPORTED_FORMATS = ["mp3", "wav", "m4a"]
 
 tasks = {}
 
-# Decorator and polling functions
 async def disconnect_poller(request: Request, result: Any):
     try:
         while not await request.is_disconnected():
@@ -70,7 +66,8 @@ def cancel_on_disconnect(handler: Callable[[Request], Awaitable[Any]]):
 @cancel_on_disconnect
 async def transcribe_upload(request: Request,
                             file: UploadFile = File(...), 
-                            background_tasks: BackgroundTasks = BackgroundTasks()):
+                            background_tasks: BackgroundTasks = BackgroundTasks(),
+                            language: str = Form(default="en-US")):
     file_ext = file.filename.split('.')[-1].lower()
     if file_ext not in SUPPORTED_FORMATS:
         return {"error": "Unsupported file format"}
@@ -86,7 +83,7 @@ async def transcribe_upload(request: Request,
     audio = AudioSegment.from_file(original_path, format=file_ext)
     audio.export(wav_path, format="wav")
 
-    transcription_task = asyncio.create_task(transcribe_audio_file(wav_path, task_id))
+    transcription_task = asyncio.create_task(transcribe_audio_file(wav_path, task_id, language=language))
     tasks[task_id] = transcription_task
     print(tasks)
     try:
@@ -96,21 +93,15 @@ async def transcribe_upload(request: Request,
                                      "message": "Transcription cancelled"})
     finally:
         del tasks[task_id]
+        cleanup_files([original_path, wav_path, txt_path], background_tasks)
 
     with open(txt_path, "w") as text_file:
         text_file.write(transcription)
 
-    # Schedule deletion of temporary files
-    background_tasks.add_task(os.remove, original_path)
-    background_tasks.add_task(os.remove, wav_path)
-    background_tasks.add_task(os.remove, txt_path)
-
-    # Return the task ID and a URL for downloading the file andtranscriptin for review
     return JSONResponse(content={"taskId": task_id, 
                                  "downloadUrl": f"/download/{task_id}",
                                  "transcription": transcription})
 
-# Endpoint to download the transcription file
 @app.get("/download/{task_id}")
 async def download_transcription(task_id: str, background_tasks: BackgroundTasks):
     txt_path = f"transcription_{task_id}.txt"
@@ -126,17 +117,16 @@ async def download_transcription(task_id: str, background_tasks: BackgroundTasks
 @app.post("/cancel/{task_id}")
 async def cancel_task(task_id: str):
     if task_id in tasks:
-        tasks[task_id]["cancelled"] = True
+        tasks[task_id].cancel()
         return {"message": f"Task {task_id} cancelled"}
     raise HTTPException(status_code=404, detail="Task not found")
 
-async def transcribe_audio_file(wav_path, task_id, chunk_length_ms=59000):
+async def transcribe_audio_file(wav_path, task_id, language="en-US", chunk_length_ms=59000):
     audio = AudioSegment.from_wav(wav_path)
     chunks = make_chunks(audio, chunk_length_ms)
     full_text = ""
 
     for i, chunk in enumerate(chunks):
-        # Check if the task has been cancelled
         if task_id in tasks and tasks[task_id].cancelled():
             return "[Cancelled]"
 
@@ -147,22 +137,18 @@ async def transcribe_audio_file(wav_path, task_id, chunk_length_ms=59000):
         with sr.AudioFile(chunk_name) as source:
             audio_data = recognizer.record(source)
             try:
-                text = recognizer.recognize_google(audio_data)
+                text = recognizer.recognize_google(audio_data, language=language)
                 full_text += text + " "
             except sr.UnknownValueError:
                 full_text += "[Unintelligible] "
             except sr.RequestError as e:
                 full_text += "[Error] "
-        
-        try:
-            os.remove(chunk_name)
-        except Exception as e:
-            print(f"Error deleting file {chunk_name}: {e}")
+            
+        os.remove(chunk_name)
 
     return full_text
 
 def make_chunks(audio_segment, chunk_length_ms):
-    """Breaks an AudioSegment into chunks of a specified length."""
     return [audio_segment[i:i + chunk_length_ms] for i in range(0, len(audio_segment), chunk_length_ms)]
 
 @app.get("/")
@@ -187,6 +173,10 @@ class FileResponseWithCleanup(FileResponse):
             os.remove(path)
         except Exception as e:
             print(f"Error deleting file {path}: {e}")
+
+def cleanup_files(file_paths, background_tasks):
+    for path in file_paths:
+        background_tasks.add_task(os.remove, path)
 
 if __name__ == "__main__":
     import uvicorn

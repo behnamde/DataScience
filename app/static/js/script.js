@@ -16,7 +16,6 @@ document.addEventListener("DOMContentLoaded", function() {
     };
 
     let downloadUrl = null;
-    let progressInterval;
     let taskId = null;
 
     const supportedLanguages = {
@@ -71,54 +70,43 @@ document.addEventListener("DOMContentLoaded", function() {
         taskId = null;
     }
 
-    function updateProgress(step) {
-        const progressPercentages = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
-        elements.progressBar.style.width = `${progressPercentages[step]}%`;
-    }
+    // Establish WebSocket connection and handle reconnections
+    function connectWebSocket() {
+        const socketProtocol = (window.location.protocol === 'https:') ? 'wss:' : 'ws:';
+        const socket = new WebSocket(`${socketProtocol}//${location.host}/ws`);
 
-    function simulateProgress() {
-        let step = 0;
-        progressInterval = setInterval(() => {
-            if (step < progressPercentages.length - 1) {
-                updateProgress(step++);
-            } else {
-                clearInterval(progressInterval);
-                updateProgress(step); // Ensure it reaches 100%
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.task_id && data.hasOwnProperty('progress')) {
+                updateProgress(data.progress);
+                elements.statusMessage.textContent = `Processing task ID: ${data.task_id}`;
             }
-        }, 500); // Adjust time as needed
+        };
+
+        socket.onclose = function() {
+            console.log('WebSocket connection closed. Reconnecting...');
+            setTimeout(connectWebSocket, 3000); // Reconnect after 3 seconds
+        };
+
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
     }
 
-    // Establish WebSocket connection
-    const socket = new WebSocket(`ws://${location.host}/ws`);
-    socket.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        if (data.task_id) {
-            taskId = data.task_id;
-            console.log(`Received task ID update: ${taskId}`);
-            // Update the UI based on the received task ID
-            elements.statusMessage.textContent = `Processing task ID: ${taskId}`;
-        }
-    };
+    connectWebSocket();
 
-    socket.onerror = function(error) {
-        console.error('WebSocket error:', error);
-    };
-
-    socket.onclose = function() {
-        console.log('WebSocket connection closed');
-    };
+    function updateProgress(progress) {
+        elements.progressBar.style.width = `${progress}%`;
+    }
 
     elements.cancelButton.addEventListener('click', function() {
         console.log(`Attempting to cancel task ID: ${taskId}`);
         if (taskId) {
-            // Immediately stop progress and update UI
-            clearInterval(progressInterval);
             elements.progressBar.style.width = '0%';
             elements.loadingAnimation.style.display = 'none';
             elements.statusMessage.textContent = 'Cancelling transcription...';
             elements.cancelButton.style.display = 'none';
-    
-            // Send cancellation request to the server
+
             fetch(`/cancel/${taskId}`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
@@ -129,14 +117,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    elements.statusMessage.textContent = 'Error cancelling transcription.';
+                    elements.statusMessage.textContent = `Error cancelling transcription: ${error.message}`;
                 });
         } else {
             console.error('No transcription task to cancel.');
             elements.statusMessage.textContent = 'No ongoing transcription task found.';
         }
     });
-    
 
     elements.repeatButton.addEventListener('click', resetUI);
 
@@ -151,8 +138,6 @@ document.addEventListener("DOMContentLoaded", function() {
         elements.statusMessage.textContent = 'Uploading, please wait...';
         elements.cancelButton.style.display = 'block';
 
-        simulateProgress();
-
         const formData = new FormData(elements.uploadForm);
         formData.append('language', languageCode);
 
@@ -165,9 +150,8 @@ document.addEventListener("DOMContentLoaded", function() {
             return response.json();
         })
         .then(data => {
-            clearInterval(progressInterval);
-            updateProgress(19);
-            elements.loadingAnimation.style.display = 'none';                    
+            updateProgress(100);
+            elements.loadingAnimation.style.display = 'none';
             elements.statusMessage.textContent = 'Transcription complete. You can review and download your file.';
             elements.transcriptionTextArea.value = data.transcription;
             elements.transcriptionResultContainer.style.display = 'block';
@@ -180,7 +164,7 @@ document.addEventListener("DOMContentLoaded", function() {
         .catch(error => {
             elements.loadingAnimation.style.display = 'none';
             console.error('Error:', error);
-            elements.statusMessage.textContent = 'An error occurred.';
+            elements.statusMessage.textContent = `An error occurred: ${error.message}`;
             resetUI();
         });
     });

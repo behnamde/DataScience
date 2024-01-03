@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Request, HTTPException, WebSocket, Form
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,10 +13,8 @@ from typing import Any, Awaitable, Callable
 
 app = FastAPI(title="Audio Transcription Service")
 
-# Mount a static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Initialize Jinja2 templates
 templates = Jinja2Templates(directory="templates")
 
 app.add_middleware(
@@ -28,8 +26,24 @@ app.add_middleware(
 )
 
 SUPPORTED_FORMATS = ["mp3", "wav", "m4a"]
-
 tasks = {}
+active_connections = []
+
+async def notify_task_update(task_id):
+    for connection in active_connections:
+        await connection.send_json({"task_id": task_id})
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        while True:
+            await asyncio.sleep(1)
+    except Exception as e:
+        print(e)
+    finally:
+        active_connections.remove(websocket)
 
 async def disconnect_poller(request: Request, result: Any):
     try:
@@ -92,7 +106,10 @@ async def transcribe_upload(request: Request,
                                                                    task_id, 
                                                                    language=language))
     tasks[task_id] = transcription_task
-    print(tasks)
+
+    # Notify clients about the task_id update
+    await notify_task_update(task_id)
+
     try:
         transcription = await transcription_task
     except asyncio.CancelledError:
@@ -162,14 +179,6 @@ def make_chunks(audio_segment, chunk_length_ms):
 async def read_html(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# @app.get("/style.css", response_class=FileResponse)
-# async def read_css():
-#     return FileResponse("templates/style.css")
-
-# @app.get("/script.js", response_class=FileResponse)
-# async def read_js():
-#     return FileResponse("templates/script.js")
-
 @app.get("/loading_clock_2.gif")
 async def get_loading_gif():
     return FileResponse("templates/loading_clock_2.gif")
@@ -196,3 +205,4 @@ def cleanup_files(file_paths, background_tasks):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="localhost", port=8000)
+

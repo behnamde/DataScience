@@ -88,6 +88,26 @@ document.addEventListener("DOMContentLoaded", function() {
         }, 500); // Adjust time as needed
     }
 
+    // Establish WebSocket connection
+    const socket = new WebSocket(`ws://${location.host}/ws`);
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.task_id) {
+            taskId = data.task_id;
+            console.log(`Received task ID update: ${taskId}`);
+            // Update the UI based on the received task ID
+            elements.statusMessage.textContent = `Processing task ID: ${taskId}`;
+        }
+    };
+
+    socket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+    };
+
+    socket.onclose = function() {
+        console.log('WebSocket connection closed');
+    };
+
     elements.cancelButton.addEventListener('click', function() {
         if (taskId) {
             // Immediately stop progress and update UI

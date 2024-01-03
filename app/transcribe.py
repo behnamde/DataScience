@@ -30,8 +30,14 @@ tasks = {}
 active_connections = []
 
 async def notify_task_update(task_id):
+    closed_connections = []
     for connection in active_connections:
+        if not connection.client_state == WebSocketState.CONNECTED:
+            closed_connections.append(connection)
+            continue
         await connection.send_json({"task_id": task_id})
+    for conn in closed_connections:
+        active_connections.remove(conn)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

@@ -109,6 +109,7 @@ document.addEventListener("DOMContentLoaded", function() {
     };
 
     elements.cancelButton.addEventListener('click', function() {
+        console.log(`Attempting to cancel task ID: ${taskId}`);
         if (taskId) {
             // Immediately stop progress and update UI
             clearInterval(progressInterval);

@@ -108,10 +108,14 @@ async def transcribe_upload(request: Request,
 @app.get("/download/{task_id}")
 async def download_transcription(task_id: str, background_tasks: BackgroundTasks):
     txt_path = f"{tempfile.gettempdir()}/transcription_{task_id}.txt"
+    logger.info(f"Attempting to download file at: {txt_path}")  # Log the file path
+
     if os.path.exists(txt_path):
+        logger.info(f"File found, preparing download for: {txt_path}")
         response = FileResponseWithCleanup(path=txt_path, filename="transcription.txt", media_type='text/plain', background_tasks=background_tasks)
         return response
     else:
+        logger.error(f"File not found at: {txt_path}")
         raise HTTPException(status_code=404, detail="File not found")
 
 @app.post("/cancel/{task_id}")
@@ -137,12 +141,13 @@ async def transcribe_audio_file(wav_path, task_id, language="en-US", chunk_lengt
             logger.info(f"Task {task_id} cancelled, stopping transcription.")
             raise asyncio.CancelledError
 
-        async with aiofiles.tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as temp_chunk_file:
-            chunk_name = temp_chunk_file.name
-            chunk.export(chunk_name, format="wav")
+        # Create a temporary file name
+        _, temp_chunk_file = tempfile.mkstemp(suffix=".wav")
+        try:
+            chunk.export(temp_chunk_file, format="wav")
 
             recognizer = sr.Recognizer()
-            with sr.AudioFile(chunk_name) as source:
+            with sr.AudioFile(temp_chunk_file) as source:
                 audio_data = recognizer.record(source)
                 try:
                     text = recognizer.recognize_google(audio_data, language=language)
@@ -151,7 +156,18 @@ async def transcribe_audio_file(wav_path, task_id, language="en-US", chunk_lengt
                     full_text += "[Unintelligible] "
                 except sr.RequestError as e:
                     full_text += "[Error] "
-        
+        finally:
+            # Close the file if it's open in another context
+            try:
+                os.close(_)
+            except OSError as e:
+                logger.error(f"Error closing file handle: {e}")
+            # Ensure the temporary file is deleted
+            try:
+                os.remove(temp_chunk_file)
+            except OSError as e:
+                logger.error(f"Error removing temporary file: {e}")
+
         progress = (i + 1) / num_chunks * 100
         await notify_task_update(task_id, progress)
 

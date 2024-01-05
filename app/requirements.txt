@@ -3,3 +3,4 @@ uvicorn
 pydub
 SpeechRecognition
 aiofiles
+python_socketio

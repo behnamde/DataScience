@@ -176,7 +176,7 @@
     </footer>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            let socket = io();
+            let socket;
             let downloadUrl = null;
             let taskId = null;
 
@@ -250,6 +250,15 @@
             }
 
             function connectSocketIO() {
+                // Determine the correct protocol based on the current page protocol
+                const socketProtocol = (window.location.protocol === 'https:') ? 'https:' : 'http:';
+
+                // Construct the Socket.IO server URL
+                const socketServerUrl = `${socketProtocol}//${window.location.host}`;
+
+                // Initialize the Socket.IO client with the server URL
+                socket = io(socketServerUrl);
+                
                 // Connect to Socket.IO server
                 socket.on('connect', function() {
                     console.log("Socket.IO connection established");

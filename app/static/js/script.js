@@ -1,4 +1,8 @@
 document.addEventListener("DOMContentLoaded", function() {
+    let socket;
+    let downloadUrl = null;
+    let taskId = null;
+
     const elements = {
         uploadForm: document.getElementById('upload-form'),
         loadingAnimation: document.getElementById('loading'),
@@ -14,9 +18,6 @@ document.addEventListener("DOMContentLoaded", function() {
         dragDropArea: document.getElementById('drag-drop-area'),
         fileNameDisplay: document.getElementById('file-name')
     };
-
-    let downloadUrl = null;
-    let taskId = null;
 
     const supportedLanguages = {
         'en': 'en-US',
@@ -73,13 +74,49 @@ document.addEventListener("DOMContentLoaded", function() {
     // Establish WebSocket connection and handle reconnections
     function connectWebSocket() {
         const socketProtocol = (window.location.protocol === 'https:') ? 'wss:' : 'ws:';
-        const socket = new WebSocket(`${socketProtocol}//${location.host}/ws`);
+        socket = new WebSocket(`${socketProtocol}//${location.host}/ws`);
+
+        socket.onopen = function() {
+            console.log("WebSocket connection established");
+        };
+
+        // socket.onmessage = function(event) {
+        //     const data = JSON.parse(event.data);
+        //     console.log("WebSocket message received:", data);
+        
+        //     // Assuming the server sends the taskId when the task is created
+        //     // and with each progress update
+        //     if (data.taskId) {
+        //         taskId = data.taskId;
+        //         console.log(`Task ID set to: ${taskId}`);
+        
+        //         if (data.hasOwnProperty('progress')) {
+        //             updateProgress(data.progress);
+        //             elements.statusMessage.textContent = `Processing task ID: ${taskId}`;
+        //         }
+        //     } else {
+        //         console.error('No taskId in WebSocket message.');
+        //     }
+        // };
 
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
-            if (data.task_id && data.hasOwnProperty('progress')) {
-                updateProgress(data.progress);
-                elements.statusMessage.textContent = `Processing task ID: ${data.task_id}`;
+            console.log("WebSocket message received:", data);
+        
+            if (data.taskId) {
+                taskId = data.taskId;
+                console.log(`Task ID set to: ${taskId}`);
+
+                if (data.hasOwnProperty('progress')) {
+                    updateProgress(data.progress);
+                    // elements.statusMessage.textContent = `Processing task ID: ${taskId}`;
+                }
+            } else if (data.message && data.message.includes('Cancellation requested')) {
+                console.log(data.message);
+                elements.statusMessage.textContent = 'Transcription cancelled.';
+                resetUI();
+            } else {
+                console.error('Unexpected message received:', data);
             }
         };
 
@@ -99,6 +136,32 @@ document.addEventListener("DOMContentLoaded", function() {
         elements.progressBar.style.width = `${progress}%`;
     }
 
+    // elements.cancelButton.addEventListener('click', function() {
+    //     console.log(`Attempting to cancel task ID: ${taskId}`);
+    //     if (taskId) {
+    //         elements.progressBar.style.width = '0%';
+    //         elements.loadingAnimation.style.display = 'none';
+    //         elements.statusMessage.textContent = 'Cancelling transcription...';
+    //         elements.cancelButton.style.display = 'none';
+
+    //         fetch(`/cancel/${taskId}`, { method: 'POST' })
+    //             .then(response => response.json())
+    //             .then(data => {
+    //                 console.log('Cancellation response:', data);
+    //                 elements.statusMessage.textContent = 'Transcription cancelled.';
+    //                 taskId = null;
+    //                 resetUI();
+    //             })
+    //             .catch(error => {
+    //                 console.error('Error:', error);
+    //                 elements.statusMessage.textContent = `Error cancelling transcription: ${error.message}`;
+    //             });
+    //     } else {
+    //         console.error('No transcription task to cancel.');
+    //         elements.statusMessage.textContent = 'No ongoing transcription task found.';
+    //     }
+    // });
+
     elements.cancelButton.addEventListener('click', function() {
         console.log(`Attempting to cancel task ID: ${taskId}`);
         if (taskId) {
@@ -107,18 +170,13 @@ document.addEventListener("DOMContentLoaded", function() {
             elements.statusMessage.textContent = 'Cancelling transcription...';
             elements.cancelButton.style.display = 'none';
 
-            fetch(`/cancel/${taskId}`, { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Cancellation response:', data);
-                    elements.statusMessage.textContent = 'Transcription cancelled.';
-                    taskId = null;
-                    resetUI();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    elements.statusMessage.textContent = `Error cancelling transcription: ${error.message}`;
-                });
+            // Send cancellation request via WebSocket
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ cancelTask: true, taskId: taskId }));
+            } else {
+                console.error('WebSocket is not open. Cannot send cancellation request.');
+                elements.statusMessage.textContent = 'Unable to cancel transcription.';
+            }
         } else {
             console.error('No transcription task to cancel.');
             elements.statusMessage.textContent = 'No ongoing transcription task found.';
@@ -159,7 +217,6 @@ document.addEventListener("DOMContentLoaded", function() {
             elements.downloadButton.style.display = 'block';
             elements.cancelButton.style.display = 'none';
             elements.repeatButton.style.display = 'block';
-            taskId = data.taskId;
         })
         .catch(error => {
             elements.loadingAnimation.style.display = 'none';

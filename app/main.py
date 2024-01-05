@@ -2,7 +2,7 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi import File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+# from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os, datetime, asyncio, uuid, tempfile, logging
 from pydub import AudioSegment
@@ -19,7 +19,7 @@ sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 app = FastAPI(title="Audio Transcription Service")
 socket_app = socketio.ASGIApp(sio, app)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
@@ -175,7 +175,7 @@ def make_chunks(audio_segment, chunk_length_ms):
 
 @app.get("/")
 async def read_html(request: Request):
-    return templates.TemplateResponse("index_test.html", {"request": request})
+    return templates.TemplateResponse("upload.html", {"request": request})
 
 @app.get("/loading_clock_2.gif")
 async def get_loading_gif():

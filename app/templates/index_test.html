@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Transcription Service</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Audio Transcription Service</h1>
+    </header>
+    <main>
+        <form id="upload-form" action="/transcribe/" method="post" enctype="multipart/form-data">
+            <div id="user-message" style="text-align: center; margin-top: 20px;">
+                <p>Now, just English audio is supported, but more langueges are becomming available in next few days</p>
+            </div>
+            <select id="language-select">
+                <option value="en">English</option>
+                <option value="sp">Spanish</option>
+                <option value="pt">Portuguese</option>
+                <!-- <option value="fa">Farsi</option> -->
+                <!-- Add more options as needed -->
+            </select>
+            <div class="drag-drop-area" id="drag-drop-area">
+                <p>Drag and drop an audio file here or click to select</p>
+                <p id="file-name" style="color: #3498db;"></p>
+            </div>
+            <input type="file" id="file-upload" name="file" accept="audio/*">
+            <input type="submit" value="Upload and Transcribe">
+        </form>
+        <img id="loading" src="/loading_clock_2.gif" alt="Loading..." />
+        <div id="progress-container" style="display:none;">
+            <div id="progress-bar"></div>
+        </div>
+        <div id="status-message"></div>
+        <div id="transcription-result" style="display:none;">
+            <h3>Transcribed Text:</h3>
+            <textarea id="transcription-text" rows="10" cols="50" readonly></textarea>
+        </div>
+        <div id="button-group">
+            <button id="download-btn" style="display:none;">Download Transcription</button>
+            <button id="cancel-btn" style="display:none;">Cancel</button>
+            <button id="repeat-btn" style="display:none;">Try The Next One</button>
+        </div>
+    </main>
+    <footer>
+        <p>Powered by <a href="https://behnamooz.com">Behnamooz.com</a></p>
+    </footer>
+    <script src="static/js/script_test.js"></script>
+</body>
+</html>

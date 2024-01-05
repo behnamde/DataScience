@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function() {
-    let socket;
+    let socket = io();
     let downloadUrl = null;
     let taskId = null;
 
@@ -71,75 +71,93 @@ document.addEventListener("DOMContentLoaded", function() {
         taskId = null;
     }
 
-    function connectWebSocket() {
-        const socketProtocol = (window.location.protocol === 'https:') ? 'wss:' : 'ws:';
-        const socket = new WebSocket(`${socketProtocol}//${location.host}/ws`);
-    
-        socket.onopen = function() {
-            console.log("WebSocket connection established");
-        };
-    
-        socket.onmessage = function(event) {
+    function connectSocketIO() {
+        // Connect to Socket.IO server
+        socket.on('connect', function() {
+            console.log("Socket.IO connection established");
+        });
+
+        socket.on('progress_update', function(data) {
             let timestamp = new Date();
-            const data = JSON.parse(event.data);
-            console.log("WebSocket message received:", data);
-            console.log("time =", timestamp)
-        
-            // Check if the message contains taskId and progress
+            console.log("Socket.IO message received:", data);
+            console.log("time =", timestamp);
+
             if (data.taskId && data.hasOwnProperty('progress')) {
                 taskId = data.taskId;
                 updateProgress(taskId, data.progress);
-                elements.statusMessage.textContent = `Processing Percentage: ${data.progress}%`;
-            } 
-            // Handle cancellation message
-            else if (data.message && data.message.includes('Cancellation requested')) {
+            }
+        });
+
+        socket.on('message', function(data) {
+            if (data.message && data.message.includes('Cancellation requested')) {
+                resetUI();
                 console.log(data.message);
                 elements.statusMessage.textContent = 'Transcription cancelled.';
-                resetUI();
-            } 
-            // Handle unexpected messages
-            else {
-                console.error('Unexpected message received:', data);
             }
-        };
-    
-        socket.onclose = function() {
-            console.log('WebSocket connection closed. Reconnecting...');
-            setTimeout(connectWebSocket, 1000); // Reconnect after 1 seconds
-        };
-    
-        socket.onerror = function(error) {
-            console.error('WebSocket error:', error);
-        };
+        });
+
+        socket.on('error', function(data) {
+            console.error('Error message received:', data);
+            elements.statusMessage.textContent = `Error: ${data.error}`;
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Socket.IO connection disconnected. Attempting to reconnect...');
+            socket.connect(); // Reconnect
+        });
     }
     
     function updateProgress(taskId, progress) {
         elements.progressBar.style.width = `${progress}%`;
+        elements.statusMessage.textContent = `Processing Percentage: ${data.progress}%`;
         console.log(`Progress for task ${taskId}: ${progress}%`); // Optional: for debugging
     }
     
-    // Initialize WebSocket connection
-    connectWebSocket();  
+    // Initialize Socket.IO connection
+    connectSocketIO();  
 
+
+    // elements.cancelButton.addEventListener('click', function() {
+    //     console.log(`Attempting to cancel task ID: ${taskId}`);
+    //     if (taskId) {
+    //         // Send cancellation request via Socket.IO
+    //         if (socket.connected) {
+    //             socket.emit('cancel_task', { taskId: taskId });
+    //         } else {
+    //             console.error('Socket.IO is not connected. Cannot send cancellation request.');
+    //             elements.statusMessage.textContent = 'Unable to cancel transcription.';
+    //         }
+    //         resetUI();
+    //         elements.statusMessage.textContent = 'Cancelling transcription...';
+    //         elements.repeatButton.style.display = 'block';
+    //     } else {
+    //         console.error('No transcription task to cancel.');
+    //         elements.statusMessage.textContent = 'No ongoing transcription task found.';
+    //     }
+    // });
 
     elements.cancelButton.addEventListener('click', function() {
-        console.log(`Attempting to cancel task ID: ${taskId}`);
-        if (taskId) {
-            elements.progressBar.style.width = '0%';
-            elements.loadingAnimation.style.display = 'none';
-            elements.statusMessage.textContent = 'Cancelling transcription...';
-            elements.cancelButton.style.display = 'none';
-
-            // Send cancellation request via WebSocket
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ cancelTask: true, taskId: taskId }));
+        var confirmation = confirm('Are you sure you want to cancel?');
+        if (confirmation) {
+            // Code to handle the cancellation
+            console.log(`Attempting to cancel task ID: ${taskId}`);
+            if (taskId) {
+            // Send cancellation request via Socket.IO
+            if (socket.connected) {
+                socket.emit('cancel_task', { taskId: taskId });
             } else {
-                console.error('WebSocket is not open. Cannot send cancellation request.');
+                console.error('Socket.IO is not connected. Cannot send cancellation request.');
                 elements.statusMessage.textContent = 'Unable to cancel transcription.';
             }
+            resetUI();
+            elements.statusMessage.textContent = 'Cancelling transcription...';
+            elements.repeatButton.style.display = 'block';
+            } else {
+                console.error('No transcription task to cancel.');
+                elements.statusMessage.textContent = 'No ongoing transcription task found.';
+            }
         } else {
-            console.error('No transcription task to cancel.');
-            elements.statusMessage.textContent = 'No ongoing transcription task found.';
+            console.log('Cancellation aborted.');
         }
     });
 

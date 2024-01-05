@@ -1,5 +1,4 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from fastapi import WebSocket, WebSocketDisconnect
 from fastapi import File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,12 +8,16 @@ import os, datetime, asyncio, uuid, tempfile, logging
 from pydub import AudioSegment
 import speech_recognition as sr
 from typing import Dict
-import aiofiles
+import aiofiles, socketio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# Create a Socket.IO server
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 app = FastAPI(title="Audio Transcription Service")
+socket_app = socketio.ASGIApp(sio, app)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -33,47 +36,33 @@ tasks = {}
 cancellation_flags: Dict[str, bool] = {}
 active_connections = []
 
+# Replace notify_task_update function with a Socket.IO version
 async def notify_task_update(task_id, progress):
     logger.info(f"Current Tasks = {tasks.keys()}")
-    disconnected_connections = []
     timestamp = datetime.datetime.now()
-    for connection in active_connections:
-        try:
-            logger.info(f"Checking connection state for taskId: {task_id} and progress: {progress} at {timestamp}")
-            await connection.send_json({"taskId": task_id, "progress": progress})
-        except WebSocketDisconnect:
-            logger.info(f"WebSocket disconnected for taskId: {task_id}. Removing connection.")
-            disconnected_connections.append(connection)
-            continue
+    logger.info(f"Sending progress for taskId: {task_id} and progress: {progress} at {timestamp}")
+    await sio.emit('progress_update', {"taskId": task_id, "progress": progress})
 
-    for conn in disconnected_connections:
-        active_connections.remove(conn)
-        logger.info(f"Connection removed for taskId: {task_id}")
+@sio.event
+async def connect(sid, environ):
+    logger.info(f"Socket connected: {sid}")
 
+@sio.event
+async def disconnect(sid):
+    logger.info(f"Socket disconnected: {sid}")
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    active_connections.append(websocket)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            if "cancelTask" in data and "taskId" in data:
-                task_id = data["taskId"]
-                await cancel_task(task_id, websocket)
-    except WebSocketDisconnect:
-        active_connections.remove(websocket)
-
-async def cancel_task(task_id, websocket):
+@sio.event
+async def cancel_task(sid, data):
+    task_id = data['taskId']
     logger.info(f"Cancellation requested for task ID: {task_id}")
     if task_id in tasks:
         cancellation_flags[task_id] = True
         task = tasks[task_id]
         if not task.done():
             task.cancel()
-        await websocket.send_json({"message": f"Cancellation requested for task {task_id}"})
+        await sio.emit('message', {"message": f"Cancellation requested for task {task_id}"}, room=sid)
     else:
-        await websocket.send_json({"error": "Task not found"})
+        await sio.emit('error', {"error": "Task not found"}, room=sid)
 
 @app.post("/transcribe/")
 async def transcribe_upload(request: Request,
@@ -176,7 +165,7 @@ async def transcribe_audio_file(wav_path, task_id, language="en-US", chunk_lengt
             except OSError as e:
                 logger.error(f"Error removing temporary file: {e}")
 
-        progress = (i + 1) / num_chunks * 100
+        progress = int((i + 1) / num_chunks * 100)
         await notify_task_update(task_id, progress)
 
     return full_text
@@ -186,7 +175,7 @@ def make_chunks(audio_segment, chunk_length_ms):
 
 @app.get("/")
 async def read_html(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index_test.html", {"request": request})
 
 @app.get("/loading_clock_2.gif")
 async def get_loading_gif():
@@ -217,4 +206,4 @@ def cleanup_files(file_paths, background_tasks, exclude=None):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(socket_app, host="localhost", port=8000)

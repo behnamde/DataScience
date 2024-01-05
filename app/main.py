@@ -116,7 +116,7 @@ async def transcribe_upload(request: Request,
 
 @app.get("/download/{task_id}")
 async def download_transcription(task_id: str, background_tasks: BackgroundTasks):
-    txt_path = f"{tempfile.gettempdir()}\\transcription_{task_id}.txt"
+    txt_path = f"{tempfile.gettempdir()}/transcription_{task_id}.txt"
     logger.info(f"Attempting to download file at: {txt_path}")  # Log the file path
 
     if os.path.exists(txt_path):
@@ -206,4 +206,4 @@ def cleanup_files(file_paths, background_tasks, exclude=None):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(socket_app, host="localhost", port=8000)
+    uvicorn.run(socket_app, host="0.0.0.0", port=8000)

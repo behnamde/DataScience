@@ -257,7 +257,10 @@
                 const socketServerUrl = `${socketProtocol}//${window.location.host}`;
 
                 // Initialize the Socket.IO client with the server URL
-                socket = io(socketServerUrl);
+                socket = io(socketServerUrl, {
+                    reconnectionAttempts: 10,
+                    reconnectionDelay: 1000,
+                });
                 
                 // Connect to Socket.IO server
                 socket.on('connect', function() {
@@ -291,6 +294,10 @@
                 socket.on('disconnect', function() {
                     console.log('Socket.IO connection disconnected. Attempting to reconnect...');
                     socket.connect(); // Reconnect
+                });
+
+                socket.on('reconnect_failed', function() {
+                    console.error('Reconnection to Socket.IO server failed.');
                 });
             }
             

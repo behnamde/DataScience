@@ -249,17 +249,20 @@
                 taskId = null;
             }
 
+            function updateUIForSocketStatus(connected) {
+                if (connected) {
+                    elements.statusMessage.textContent = 'Connected to the server.';
+                } else {
+                    elements.statusMessage.textContent = 'Disconnected from the server. Attempting to reconnect...';
+                }
+            }
+
             function connectSocketIO() {
-                // Determine the correct protocol based on the current page protocol
-                const socketProtocol = (window.location.protocol === 'https:') ? 'https:' : 'http:';
-
-                // Construct the Socket.IO server URL
+                const socketProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const socketServerUrl = `${socketProtocol}//${window.location.host}`;
-
-                // Initialize the Socket.IO client with the server URL
                 socket = io(socketServerUrl, {
-                    reconnectionAttempts: 10,
-                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 2000,
                 });
                 
                 // Connect to Socket.IO server
